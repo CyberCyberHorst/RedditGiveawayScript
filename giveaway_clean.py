@@ -9,7 +9,7 @@ default_secret="insert API secret here"
 default_username="Insert your Username here"
 default_password="Insert your password here"
 
-raffle_regex="^[1{1},2{1},3{1}]{1-3}" # Regex String to match for the raffle The default matches a priority list of 1-3 This Regex NEEDS unique digits or characters, so prizes can be awarded correctly
+raffle_regex="^[1{1},2{1},3{1}]{1,3}" # Regex String to match for the raffle The default matches a priority list of 1-3 
 
 prizes=[
     {    
@@ -105,6 +105,12 @@ numberOfWinners=len(prizes)
 awarded = 0
 offset=0
 while(awarded<numberOfWinners):
+    if awarded+offset >= len(cleanedComments):
+        print("Prizes that not have been awarded, because nobody wanted them:")
+        for prize in prizes:
+            if prize["gone"] is False:
+                print(prize["name"])
+        sys.exit()
     prioList = re.search(raffle_regex,cleanedComments[awarded+offset].body)
     print(str(cleanedComments[awarded+offset].author)+" has prio list "+prioList.group())
     currentUserAwarded=False
@@ -120,14 +126,16 @@ while(awarded<numberOfWinners):
             print (cleanedComments[awarded+offset].author.name+" receives "+foundPrize["name"])
             # Winner message containing the secret
             winnerMessage="Congratulations, "+cleanedComments[awarded+offset].author.name+"\n\n you were winner number "+str((awarded+1))+" in my raffle. \n You won number "+str((position+1))+" in your priority list: "+foundPrize["name"]+". This is your code: \n\n "+foundPrize["secret"]+" \n\n This is a automated message by the giveaway script. GL&HF"
-            print(winnerMessage)
+            # print(winnerMessage)
             # Send to winner
             reddit.redditor(cleanedComments[awarded+offset].author.name).message("You won!", winnerMessage)
             currentUserAwarded=True
             awarded=awarded+1
         else:
             position=position+1
-            if position == len(prioList.group()):
-                # The user won, but none of the games in his priority list is still there. skip comment with an offset
+            if position >= len(prioList.group()):
+                loserMessage="Hello "+cleanedComments[awarded+offset].author.name+"\n You were selected as winner in "+str((awarded+1))+" place, but all your priorized prizes were already gone. Better luck next time."
+                reddit.redditor(cleanedComments[awarded+offset].author.name).message("Better luck next time!", loserMessage)
+                print(loserMessage)
                 currentUserAwarded=True
                 offset=offset+1
